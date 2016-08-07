@@ -1,0 +1,40 @@
+#ddmenu
+{
+    display:block;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /*Specify the alignment of the whole UL if UL is not width:100%;*/
+    letter-spacing:normal;
+}
+#ddmenu ul
+{ 
+    margin:0;
+    padding:0;
+    text-align:left; /* Alignment of each top-level menu items within the UL */
+    width:100%;
+    font-size:0;
+    
+    display:inline-block;
+    list-style:none;
+    position:relative;
+    z-index:999999990; 
+    max-width:1400px;
+}
+
+#ddmenu li
+{
+    margin:0;
+    padding:0;
+    font-size:16px;
+    display:inline-block;
+    *display:inline;
+    zoom:1; /*for IE6-7*/
+    position:relative;
+    
+    line-height:46px; /*This determines the height of the menu*/
+    vertical-align:middle;
+    
+    outline:none;
+    -moz-user-select:none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}

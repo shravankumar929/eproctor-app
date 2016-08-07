@@ -1,0 +1,321 @@
+<%--
+This page is used to display the results of all the students  to the teacher currently logged
+in for the test selected by the teacher on selectTest.jsp page 
+--%>
+<%
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Pragma", "no-cache");
+    response.setDateHeader("Expires", 0);
+%>
+
+<%@page contentType="text/html" pageEncoding="UTF-8" import="java.io.BufferedReader,java.io.FileReader,java.io.FileWriter,java.util.StringTokenizer,java.util.Arrays,java.io.File,java.lang.*,java.sql.*,java.io.*;"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <%
+        if ((session.getAttribute("name")) != null && (session.getAttribute("password") != null) && (session.getAttribute("role").equals("Teacher"))) {
+    %>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>e-Abhyaas : Teacher</title>
+
+        <link href="main_style.css" rel="stylesheet" type="text/css" />
+
+    </head>
+    <body>
+        <div id="main_container">
+
+            <div id="main_header">
+                <div id="logosection">
+                    <div class="sitelogo"><img src="images/people.gif" width="215" height="75"></img></div>
+                    <div class="sitename">&nbsp;e-<font style="font-family: Samarkan">&nbsp;Abhyaas</font></div>
+                </div>
+                <div id="header">
+                    <div class="title">
+                        <p>Education through<br />
+                            <span class="bigtext">The Aakash Tablet</span></p>
+                        <p><br />
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="main_menu">
+                <div id="search">
+                </div>
+                <div id="menu">
+                    <ul>
+                        <li></li>
+                        <li></li>
+                        <li><a href="teacherIndex.jsp" >Home</a></li>
+                        <li><a href="quizspecifications.jsp">Quiz Specifications</a></li>
+                        <li><a href="selectTest.jsp" class="current">Result</a></li>
+                    </ul>
+                </div>
+            </div>
+
+
+
+            <div id="main_content">
+
+
+
+                <div id="main_left_column">
+
+                    <div id="leftcolumn_box01">
+                        <div class="leftcolumn_box01_top">
+                            <h2>Welcome <%= session.getAttribute("firstName")%> !!</h2>
+                        </div>
+                        <div>
+                            <form method="post" action="#">
+                                <div align="left"> <a href="logout.jsp"/></div>
+                                <div class="form_row"><label></label>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="leftcolumn_box02">
+                        <h2>Log Out</h2>
+                        <ul>
+
+                        </ul>
+                    </div>
+
+                    <div id="imagebutton"><a href="#"><img src="images/SM111378.gif" alt="" width="220" height="138" /></a></div>
+
+                </div>
+
+                <div id="main_middle_column">
+                    <table border="1" style="background-color:#E4E1E1;border-color:#1AACF0;font-family: Calibri;font-size:medium " class="form_row" cellspacing="0" cellpadding="4">
+                        <tr>
+                            <th>MacID</th>
+                            <th>Student Name</th>
+                            <th>Marks Scored</th>
+                            <th>Total Marks</th>
+                            <th>Questions Attempted</th>
+                            <th>Number of Right Answers</th>
+                            <th>Number of Wrong Answers</th>
+
+                        </tr>
+
+
+
+                        <%
+
+                            int flag = 1;
+                            int numberOfQuestion;
+                            int totalMarks = 0;
+                            String answer[][] = new String[1][1];
+
+                            if (flag == 1) {
+                                try {
+                                    BufferedReader br = new BufferedReader(new FileReader(filename + ";" + request.getParameter("sel") + ";1.csv"));
+                                    String strLine = "";
+                                    StringTokenizer st = null;
+                                    int lineNumber = 0, tokenNumber = 0;
+                                    int questionType = 0;
+                                    // read comma separated file line by line
+                                    while ((strLine = br.readLine()) != null) {
+                                        lineNumber++;
+
+                                        st = new StringTokenizer(strLine, ",");
+
+                                        while (st.hasMoreTokens()) {
+                                            // display csv values
+                                            tokenNumber++;
+                                            if (lineNumber == 1 && tokenNumber == 1) {
+                                                numberOfQuestion = Integer.parseInt(st.nextToken());
+                                                answer = new String[numberOfQuestion][3];
+                                            } else if (lineNumber == 1 && tokenNumber == 3) {
+                                                totalMarks = Integer.parseInt(st.nextToken());
+                                            } else if (lineNumber != 1 && tokenNumber == 2) {
+                                                questionType = Integer.parseInt(st.nextToken());
+                                            } else if (tokenNumber == 5) {
+                                                answer[(lineNumber - 2)][0] = (st.nextToken());
+                                            } else if (tokenNumber == 6) {
+                                                answer[(lineNumber - 2)][1] = (st.nextToken());
+                                            } else if (tokenNumber == 7) {
+
+                                                answer[(lineNumber - 2)][2] = (st.nextToken());
+                                                if (questionType == 2 || questionType == 5) {
+                                                    String ans = answer[lineNumber - 2][2];
+                                                    String finalAns = "";
+
+                                                    if (questionType == 5) {
+                                                        String[] splitArray = ans.split("-");
+                                                        for (int i = 0; i < splitArray.length; i++) {
+                                                            char[] ansArray = splitArray[i].toCharArray();
+
+                                                            ans = "";
+                                                            Arrays.sort(ansArray);
+                                                            for (int j = 0; j < ansArray.length; j++) {
+
+                                                                ans += ansArray[j];
+                                                            }
+                                                            finalAns += (ans + ".");
+
+                                                        }
+                                                        answer[lineNumber - 2][2] = finalAns.substring(0, finalAns.length() - 1);
+                                                    } else {
+                                                        char[] ansArray = ans.toCharArray();
+
+                                                        ans = "";
+                                                        Arrays.sort(ansArray);
+                                                        for (int i = 0; i < ansArray.length; i++) {
+
+                                                            ans += ansArray[i];
+
+                                                        }
+
+                                                        answer[lineNumber - 2][2] = (ans);
+                                                    }
+                                                }
+
+                                            } else {
+                                                st.nextToken();
+                                            }
+
+                                        }
+                                        if (lineNumber >= 2) {
+                                        }
+
+                                        tokenNumber = 0;
+
+                                    }
+                                } catch (Exception e) {
+                                }
+                            }
+                            File directory = new File("uploads");
+                            /*read folder which contains all result CSV files*/
+                            String[] readfile;
+                            /* array to store names of all files in the above mentioned folder*/
+                            File[] myarray;
+                            /* array to store  path of all files in the above mentioned folder*/
+                            String[] testName;
+                            String[] final_testName;
+                            myarray = directory.listFiles();
+
+                            int num = 0;
+                            /*simple counter to check conditions*/
+                            String selected = request.getParameter("sel");
+                            /* variable 'selected' stores the name of the test selected by the teacher for which he/she wants to view result*/
+                            for (int j = 0; j < myarray.length; j++) {
+                                /*looping through all the all the files of the folder*/
+                                String name = myarray[j].getName();
+                                /*the result CSV file has a unique name which is a combination of the email-id of teacher who uploaded the test and the name of the test he has given seperated by a ';'*/
+                                if (name.contains(filename) == true && name.contains(".csv") == true && name.contains(selected) == true) {
+                                    /*get all CSV files from the concerned folder containing the name of teacher logged in and the name of test selected by teacher for which he wants to see the results*/
+                                    if (num == 0) {
+                                        out.println("<br /><h1>Test Name:- &nbsp;" + selected + "</h1><br />");
+                                        num++;
+                                    }
+                                    try {
+                                        /*establishing connection with the back end Ms-Access database named 'quiz_moduledatabase'*/
+                                        Class.forName("com.mysql.jdbc.Driver");
+                                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/quiz_moduledatabase", "root", "123");
+                                        Statement st = con.createStatement();
+                                        File path = myarray[j];
+                                        /*store the path of the file to be read in the variable 'path'*/
+                                        FileReader fr = new FileReader(path);
+                                        /*reading the concerned file*/
+                                        BufferedReader br = new BufferedReader(fr);
+                                        String lineData = "";
+                                        while ((lineData = br.readLine()) != null) {
+                                            String[] readMarks;
+                                            readfile = lineData.split(",");
+                                            for (int i = 0; i < readfile.length; i++) {
+                                                /*the result CSV file contains values seperated with a semi-colon and each row ending with a comma*/
+                    /* we split the file read  at '_' and store individual values in array readMarks*/
+                                                readMarks = readfile[i].split("_");
+                                                String qry = "select StudentName from student where MacID='" + readMarks[0] + "'";
+                                                /*Each row in CSV contains first entry as the Mac ID of the student tablet whose result follows*/
+
+                                                ResultSet rs = st.executeQuery(qry);
+
+                                                if (rs.next()) {
+
+                                                    String stuNm = rs.getString(1);
+                                                    out.println("<tr>");
+                                                    out.println("<td>" + readMarks[0] + "</td>");
+                                                    /*display Mac ID*/
+                                                    out.println("<td>" + stuNm + "</td>");
+                                                    /*display corresponding student name*/
+
+                                                    if (flag == 1) {
+
+                                                        String studentAnswer = readMarks[1];
+                                                        /* reading the second entry of each row of CSV file which contains answers given by the student,  answer for each question seperated by ';'*/
+                                                        String[] ans = studentAnswer.split(";");
+                                                        int marks = 0;
+                                                        int noOfRight = 0;
+                                                        int noOfWrong = 0;
+                                                        if (ans.length > 1) {
+                                                            for (int questionNumber = 0; questionNumber < answer.length; questionNumber++) {
+                                                                /*Iterate through the answers to evaluate student's marks*/
+                                                                if (ans[questionNumber].equals("" + answer[questionNumber][2])) /*if answer given by the student is correct*/ {
+                                                                    marks += Integer.parseInt(answer[questionNumber][0]);
+                                                                    /*increment  variable 'marks' denoting total marks by the number of  positive marks for the concerned question */
+                                                                    noOfRight++;
+                                                                    /*counter to count the number of right questions*/
+
+
+                                                                } else if (!ans[questionNumber].equals("-1")) /*if answer given by the student is wrong*/ {
+                                                                    marks -= Integer.parseInt(answer[questionNumber][1]);
+                                                                    /*deccrement  variable 'marks' denoting total marks by the number of  negative marks for the concerned question */
+                                                                    noOfWrong++;
+                                                                    /*counter to count the number of  questions answered incorrectly by the student*/
+                                                                }
+                                                            }
+
+                                                        }
+
+                                                        /*display students' results in a table*/
+                                                        out.println("<td>" + marks + "</td>");
+                                                        out.println("<td>" + totalMarks + "</td>");
+                                                        out.println("<td>" + (noOfRight + noOfWrong) + "</td>");
+                                                        out.println("<td>" + noOfRight + "</td>");
+                                                        out.println("<td>" + noOfWrong + "</td>");
+
+                                                    }
+                                                    out.println("</tr>");
+                                                }
+                                            }
+                                        }
+
+                                        br.close();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+
+                            }
+
+                        %>
+
+
+                    </table>
+                </div>
+
+
+            </div>
+
+            <!-- end of content -->
+
+
+            <div id="main_footer">
+                Copyright Â© Quiz Module| Designed by Quiz Module Team</div>
+            <div id="main_footer_bottom"></div>
+
+        </div>
+    </body>
+
+
+    <%
+    } 
+    else 
+        {
+            response.sendRedirect("/index.jsp");
+        }
+    %>
+</html>

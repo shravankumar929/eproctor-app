@@ -1,0 +1,781 @@
+<%@page import="home.Answer"%>
+<%@page import="java.sql.PreparedStatement"%>
+<%@page import="java.sql.SQLException"%>
+<%@page import="java.sql.ResultSet"%>
+<%@page import="java.sql.Statement"%>
+<%@page import="java.sql.DriverManager"%>
+<%@page import="java.sql.Connection"%>
+<%@page import="java.io.FileNotFoundException"%>
+<%@page import="com.google.gson.Gson"%>
+<%@page import="java.io.FileWriter"%>
+<%@page import="java.io.File"%>
+<%@page import="java.util.ArrayList"%>
+<%@page import="home.QuestionPaper"%>
+<%@page import="java.util.*"%>
+<%@page pageEncoding="UTF-8" contentType="text/html; charset=UTF-8"%>
+
+<%!
+    String test_name = null;
+    int num_of_questions = 0;
+    int total_duration = 0;
+    int total_marks = 0;
+    String testTime = null;
+    String testId = null;
+    String testDesc = null;
+    QuestionPaper obj = null;
+    Answer obj1 = null;
+    String question_options = null;
+%>
+<!DOCTYPE html>
+<html>
+    <%
+        if ((session.getAttribute("name")) != null && (session.getAttribute("password") != null) && (session.getAttribute("role").equals("Teacher"))) {
+    %>
+    <head>
+    </head>
+    <%
+        /*
+        encoding = config.getInitParameter("requestEncoding");
+                if( encoding==null ) 
+                        encoding="UTF-8";
+                if(null == request.getCharacterEncoding())
+                request.setCharacterEncoding(encoding);
+         */
+        StringBuffer text = null;
+        try {
+            session.getAttribute("exam_id");
+            testTime = session.getAttribute("exam_time").toString();
+            //testTime = testTime + ":00";
+            test_name = session.getAttribute("exam_name").toString();
+            total_duration = Integer.parseInt(session.getAttribute("exam_duration").toString());
+            num_of_questions = Integer.parseInt(request.getParameter("num_of_questions"));
+            text = new StringBuffer(session.getAttribute("description").toString());
+           
+        } catch (NullPointerException e) {
+            out.println("Cannot create test without all the required details!!!<br>Go back and Enter all details <a href='quizspecifications.jsp'>Click here</a>");
+        }
+
+        //int loc = (new String(text)).indexOf('\n');
+        /*
+        while (loc > 0) {
+            text.replace(loc, loc + 1, "<BR>");
+            loc = (new String(text)).indexOf('\n');
+        }
+         */
+        //total_duration = Double.parseDouble(request.getParameter("total_duration"));
+        //total_marks = Integer.parseInt(request.getParameter("total_marks"));
+        //start_time = request.getParameter("start_time");
+        int total = 0;
+        int total_que = num_of_questions - 1;
+        for (int i = 1; i < num_of_questions; i++) {
+            String m = request.getParameter("marks" + i);
+            if (m != null) {
+                total += Integer.parseInt(m);
+                //out.println("Marks="+m);
+            } else {
+                total_que -= 1;//stores number of questions
+            }
+        }
+        /*
+                INSERT INTO EXAM TABLE
+         */
+
+        obj = new QuestionPaper(test_name,text.toString(), total, total_duration, testTime, total_que);
+        obj1 = new Answer(test_name, total_que);
+        try {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+            //Statement s1=con.createStatement();
+            PreparedStatement ps=con.prepareStatement("select UserId from Details where Email='"+session.getAttribute("name").toString()+"'");
+            ResultSet rs=ps.executeQuery();
+            int uid=-1;
+            if(rs.next())
+                uid=rs.getInt(1);
+            if(uid!=-1)
+            {
+            ps = con.prepareStatement("insert into Exam(Name,Time,Marks,Duration,NoOfQuestions,Description,UserId)values(?,?,?,?,?,?,?)");
+
+            ps.setString(1, test_name);
+            ps.setString(2, testTime);
+            ps.setInt(3, total);
+            ps.setInt(4, total_duration);
+            ps.setInt(5, total_que);
+            ps.setString(6, text.toString());
+            ps.setInt(7,uid);
+            ps.executeUpdate();
+            }
+            // String que="insert into Exam(Name,Time,Marks,Duration,NoOfQuestions,Description)values('"+test_name+"','"+testTime+"','"+total+"','"+total_duration+"','"+total_que+"','"+text.toString()+"')";
+            // int rs1=s1.executeUpdate(que);
+        } catch (SQLException e) {
+            out.println("Inserting failed because of ==>" + e.getMessage());
+        }
+        //question_options = request.getParameter("question_options");
+
+        //Add question one by one
+        ArrayList<String> p = new ArrayList<>();
+        ArrayList<String> q = new ArrayList<>();
+        for (int i = 1; i <= total_que; i++) {
+            int type = -1;
+            int marks = 0;
+            int marksNeg = 0;
+            try {
+                type = Integer.parseInt(request.getParameter("type" + i));
+                marks = Integer.parseInt(request.getParameter("marks" + i));
+                marksNeg = Integer.parseInt(request.getParameter("marksNeg" + i));
+            } catch (NullPointerException e) {
+                out.println("typeMarksError=" + e.getMessage());
+            }
+
+            if (type == 1) {
+                StringBuffer que_text = new StringBuffer("");
+
+                try {
+                    int num_p = Integer.parseInt(request.getParameter("PtypeNum" + i));
+
+                    for (int j = 1; j <= num_p; j++) {
+                        p.add(request.getParameter("P" + i + "_" + j));
+                        //out.println("Adding =" + request.getParameter("P" + i + "_" + j));
+                    }
+
+                    que_text = new StringBuffer("<pre>"+request.getParameter(Integer.toString(i))+"</pre>");
+                    /*
+                    loc = (new String(que_text)).indexOf('\n');
+                    while (loc > 0) 
+                    {
+                        que_text.replace(loc, loc + 1, "<BR>");
+                        loc = (new String(que_text)).indexOf('\n');
+                    }
+                     */
+
+                } catch (NullPointerException e) {
+                    out.println(e.getMessage());
+                }
+                try {
+                    obj.addQue(type, i, que_text.toString(), marks, marksNeg, new ArrayList<>(p), new ArrayList<>(q));
+
+                    try {
+                        int ans = Integer.parseInt(request.getParameter("A" + i));
+                        obj1.addAns(i,Integer.toString(ans));
+                        Class.forName("com.mysql.jdbc.Driver");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+                        Statement s1 = con.createStatement();
+                        String sql = "select ExamId from Exam where Name=? and Time=? and Marks=?";
+                        PreparedStatement ps = con.prepareStatement(sql);
+
+                        ps.setString(1, test_name);
+                        ps.setString(2, testTime);
+                        ps.setInt(3, total);
+                        ResultSet rs = ps.executeQuery();
+
+                        //String que="select ExamId from Exam where Name='"+test_name+"' and Time='"+testTime+"' and Marks='"+total+"'";
+                        //ResultSet rs=s1.executeQuery(que);
+                        if (rs.next()) {
+                            int ExamId = Integer.parseInt(rs.getString(1));
+                            sql = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values(?,?,?,?,?,?)";
+                            ps = con.prepareStatement(sql);
+
+                            ps.setInt(1, ExamId);
+                            ps.setString(2, que_text.toString());
+                            ps.setInt(3, marks);
+                            ps.setInt(4, marksNeg);
+                            ps.setString(5, p.get(ans - 1));
+                            ps.setInt(6, 1);
+                            ps.executeUpdate();
+
+                            //Insert option into Option table
+                            sql = "select QuestionId from Question where Description=?";
+                            ps = con.prepareStatement(sql);
+                            ps.setString(1, que_text.toString());
+                            rs = ps.executeQuery();
+                            if (rs.next()) {
+                                int que_id = rs.getInt(1);
+                                for (int opt = 0; opt < p.size(); opt++) {
+                                    sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                    ps = con.prepareStatement(sql);
+                                    ps.setInt(1, que_id);
+                                    ps.setInt(2, 0);//0 for left(P) and 1 for right(Q)
+                                    ps.setString(3, p.get(opt));
+                                    ps.executeUpdate();
+                                }
+                            }
+
+                            // s1 = con.createStatement();
+                            //  que = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values('" + ExamId + "','" + que_text.toString() + "','" + marks + "','" + marksNeg + "','" + p.get(ans - 1) + "','" + 1 + "')";
+                            // int rs1 = s1.executeUpdate(que);
+                            out.println("Successfully inserted record");
+                        } else {
+                            out.println("Cannot insert quesion!!!");
+                        }
+                    } catch (Exception e) {
+                        out.println("Inserting failed because of >" + e.getMessage() + "<br>");
+                    }
+
+                } catch (NullPointerException e) {
+                    out.println("Addin que error =" + e.getMessage());
+                }
+            } else if (type == 2) {
+                /*
+                                String[] checkboxes= request.getParameterValues("checkbox");
+String[] textareas= request.getParameterValues("textarea");
+ 
+   for (int j = 0; j < checkboxes.length; j++) {
+                id = checkboxes[j]; 
+                variable = observacion[j];
+                boolean i = userdao.modificaSolicitud(id,  variable); // this is a update sql method
+                 
+            }
+
+                        java.net.URLDecoder.decode(request.getParameter("content"), "utf-8");
+
+
+                 */
+                StringBuffer que_text = new StringBuffer("");
+                try {
+                    int num_p = Integer.parseInt(request.getParameter("PtypeNum" + i));
+
+                    for (int j = 1; j <= num_p; j++) {
+                        p.add(request.getParameter("P" + i + "_" + j));
+                        //out.println("Adding =" + request.getParameter("P" + i + "_" + j));
+                    }
+
+                    que_text = new StringBuffer("<pre>"+request.getParameter(Integer.toString(i))+"</pre>");
+                    /*
+                    loc = (new String(que_text)).indexOf('\n');
+                    while (loc > 0) 
+                    {
+                        que_text.replace(loc, loc + 1, "<BR>");
+                        loc = (new String(que_text)).indexOf('\n');
+                    }
+                     */
+
+                } catch (NullPointerException e) {
+                    out.println(e.getMessage());
+                }
+                try {
+                    obj.addQue(type, i, que_text.toString(), marks, marksNeg, new ArrayList<>(p), new ArrayList<>(q));
+                    String[] checkboxes = null;
+                    String ans = null;
+                    String ans_send="";
+                    try {
+                        checkboxes = request.getParameterValues("A" + i);
+
+                        for (int l = 0; l < checkboxes.length; l++) {
+                            int val = Integer.parseInt(checkboxes[l]);
+                            if (ans == null) {
+                                ans = p.get(val - 1);
+                            } else {
+                                ans = ans + "|" + p.get(val - 1);
+                                ans_send=ans_send+val;
+                            }
+                        }
+                    } catch (NullPointerException ex) {
+                        out.println("Checkbox null point exception type=2");
+                    }
+                    try {
+                        
+                        obj1.addAns(i, ans_send);//adding answer to Answer class
+                        Class.forName("com.mysql.jdbc.Driver");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+                        Statement s1 = con.createStatement();
+                        String sql = "select ExamId from Exam where Name=? and Time=? and Marks=?";
+                        PreparedStatement ps = con.prepareStatement(sql);
+
+                        ps.setString(1, test_name);
+                        ps.setString(2, testTime);
+                        ps.setInt(3, total);
+                        ResultSet rs = ps.executeQuery();
+
+                        //String que="select ExamId from Exam where Name='"+test_name+"' and Time='"+testTime+"' and Marks='"+total+"'";
+                        //ResultSet rs=s1.executeQuery(que);
+                        if (rs.next()) {
+                            int ExamId = Integer.parseInt(rs.getString(1));
+                            sql = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values(?,?,?,?,?,?)";
+                            ps = con.prepareStatement(sql);
+
+                            ps.setInt(1, ExamId);
+                            ps.setString(2, que_text.toString());
+                            ps.setInt(3, marks);
+                            ps.setInt(4, marksNeg);
+                            ps.setString(5, ans);
+                            ps.setInt(6, 2);
+                            ps.executeUpdate();
+
+                            //insert into Options into Options table
+                            sql = "select QuestionId from Question where Description=?";
+                            ps = con.prepareStatement(sql);
+                            ps.setString(1, que_text.toString());
+                            rs = ps.executeQuery();
+                            if (rs.next()) {
+                                int que_id = rs.getInt(1);
+                                try 
+                                {
+                                    checkboxes = request.getParameterValues("A" + i);
+
+                                    for (int l = 0; l < checkboxes.length; l++) {
+                                        int val = Integer.parseInt(checkboxes[l]);
+                                        sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setInt(1, que_id);
+                                        ps.setInt(2, 0);//0 for left(P) and 1 for right(Q)
+                                        ps.setString(3, p.get(val - 1));
+                                        ps.executeUpdate();
+                                    }
+                                } 
+                                catch (NullPointerException ex) 
+                                {
+                                    out.println("Checkbox null point exception type=2");
+                                }
+                                
+                            }
+                        } else {
+                            out.println("Cannot insert into database!");
+                        }
+                    } catch (SQLException e) {
+                        out.println("Inserting failed because of ==>" + e.getMessage());
+                    }
+                } catch (NullPointerException e) {
+                    out.println("Addin que error =" + e.getMessage());
+                }
+            } else if (type == 3) {
+                StringBuffer que_text = new StringBuffer("");
+                try {
+                    que_text = new StringBuffer("<pre>"+request.getParameter(Integer.toString(i))+"</pre>");
+                    /*
+                    loc = (new String(que_text)).indexOf('\n');
+                    while (loc > 0) 
+                    {
+                        que_text.replace(loc, loc + 1, "<BR>");
+                        loc = (new String(que_text)).indexOf('\n');
+                    }
+                     */
+                    String ans = request.getParameter("NumericAns" + i);
+                    obj1.addAns(i, ans);
+                    for (int c = 0; c < ans.length(); c++) {
+                        p.add(Character.toString(ans.charAt(c)));
+                    }
+
+                } catch (NullPointerException e) {
+                    out.println(e.getMessage());
+                }
+                try {
+                    obj.addQue(type, i, que_text.toString(), marks, marksNeg, new ArrayList<>(p), new ArrayList<>(q));
+                    try {
+
+                        Class.forName("com.mysql.jdbc.Driver");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+                        Statement s1 = con.createStatement();
+                        String sql = "select ExamId from Exam where Name=? and Time=? and Marks=?";
+                        PreparedStatement ps = con.prepareStatement(sql);
+
+                        ps.setString(1, test_name);
+                        ps.setString(2, testTime);
+                        ps.setInt(3, total);
+                        ResultSet rs = ps.executeQuery();
+
+                        //String que="select ExamId from Exam where Name='"+test_name+"' and Time='"+testTime+"' and Marks='"+total+"'";
+                        //ResultSet rs=s1.executeQuery(que);
+                        if (rs.next()) {
+                            int ExamId = Integer.parseInt(rs.getString(1));
+                            sql = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values(?,?,?,?,?,?)";
+                            ps = con.prepareStatement(sql);
+                            String ans = "";
+                            for (int l = 0; l < p.size(); l++) {
+                                ans = ans + p.get(l);
+                            }
+                            ps.setInt(1, ExamId);
+                            ps.setString(2, que_text.toString());
+                            ps.setInt(3, marks);
+                            ps.setInt(4, marksNeg);
+                            ps.setString(5, ans);
+                            ps.setInt(6, 3);
+                            ps.executeUpdate();
+                            
+                            
+                            //insert into Options into Options table
+                            sql = "select QuestionId from Question where Description=?";
+                            ps = con.prepareStatement(sql);
+                            ps.setString(1, que_text.toString());
+                            rs = ps.executeQuery();
+                            if (rs.next()) {
+                                int que_id = rs.getInt(1);
+                                
+                                    sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                    ps = con.prepareStatement(sql);
+                                    ps.setInt(1, que_id);
+                                    ps.setInt(2,-1);//0 for left(P) and 1 for right(Q) and -1 for numerical
+                                    ps.setString(3,"");
+                                    ps.executeUpdate();
+                                
+                            }
+
+                        } else {
+                            out.println("Cannot insert into database!");
+                        }
+                    } catch (SQLException e) {
+                        out.println("Inserting failed because of ==>" + e.getMessage());
+                    }
+                } catch (NullPointerException e) {
+                    out.println("Addin que error =" + e.getMessage());
+                }
+            } else if (type == 4) {
+                String ans = "";
+                int num_p=0;
+                int num_q=0;
+                try {
+                    num_p = Integer.parseInt(request.getParameter("PtypeNum" + i));
+                    num_q = Integer.parseInt(request.getParameter("QtypeNum" + i));
+                    ans = request.getParameter("MatrixAns" + i);//Take answer separated by |
+                    
+                    for (int j = 1; j <= num_p; j++) {
+                        p.add(request.getParameter("P" + i + "_" + j));
+                        out.println("Adding =" + request.getParameter("P" + i + "_" + j));
+                    }
+                    for (int j = 1; j <= num_q; j++) {
+                        q.add(request.getParameter("Q" + i + "_" + j));
+                        out.println("Adding =" + request.getParameter("Q" + i + "_" + j));
+                    }
+                    StringTokenizer st=new StringTokenizer(ans,"|");
+                    String ans_send=null;
+                    while(st.hasMoreTokens())
+                    {
+                        String ans_curr=st.nextToken().toString();
+                        if(ans_curr.indexOf(":")>=0)
+                        {
+                        StringTokenizer st1=new StringTokenizer(ans_curr,":");
+                        
+                        while(st1.hasMoreTokens())
+                        {
+                            
+                            String tmp=st1.nextToken().toString();
+                            char ch=tmp.charAt(0);
+                            int index=ch-64;
+                            
+                            if(ans_send==null)
+                                ans_send=Integer.toString(index);
+                            else
+                                ans_send=ans_send+"|"+index;
+                            //int index=q.indexOf(tmp)+1;
+                            
+                            System.out.println("st1.nextToken()="+tmp);
+                        }
+                        }
+                        else
+                        {
+                            char ch=ans_curr.charAt(0);
+                            int index=ch-64;
+                            System.out.println("opt="+ans_curr);
+                            if(ans_send==null)
+                                ans_send=Integer.toString(index);
+                            else
+                                ans_send=ans_send+"|"+index;
+                            System.out.println("Does not contain :");
+                        }
+                        
+                    }
+                    //b:c|d|d:e
+                    obj1.addAns(i, ans_send);
+                    System.out.println(ans_send);
+
+                } catch (NullPointerException e) {
+                    out.println(e.getMessage());
+                }
+                try {
+                    obj.addQue(type, i, "", marks, marksNeg, new ArrayList<>(p), new ArrayList<>(q));
+                    try {
+
+                        Class.forName("com.mysql.jdbc.Driver");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+                        String sql = "select ExamId from Exam where Name=? and Time=? and Marks=?";
+                        PreparedStatement ps = con.prepareStatement(sql);
+
+                        ps.setString(1, test_name);
+                        ps.setString(2, testTime);
+                        ps.setInt(3, total);
+                        ResultSet rs = ps.executeQuery();
+
+                        //String que="select ExamId from Exam where Name='"+test_name+"' and Time='"+testTime+"' and Marks='"+total+"'";
+                        //ResultSet rs=s1.executeQuery(que);
+                        if (rs.next()) {
+                            int ExamId = Integer.parseInt(rs.getString(1));
+                            sql = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values(?,?,?,?,?,?)";
+                            ps = con.prepareStatement(sql);
+
+                            ps.setInt(1, ExamId);
+                            ps.setString(2, "");//EXTRACT FROM TEXT FIELD
+                            ps.setInt(3, marks);
+                            ps.setInt(4, marksNeg);
+                            ps.setString(5, ans);
+                            ps.setInt(6, 4);
+                            ps.executeUpdate();
+                            
+                            
+                            //insert into Options into Options table
+                            sql = "select QuestionId from Question where Marks=? and NegativeMarks=? and Answer=? and Description=?";
+                            ps = con.prepareStatement(sql);
+                            ps.setInt(1,marks);
+                            ps.setInt(2,marksNeg);
+                            ps.setString(3,ans);
+                            ps.setString(4,"");
+                            
+                            rs = ps.executeQuery();
+                            if (rs.next()) {
+                                int que_id = rs.getInt(1);
+                                try 
+                                {
+                                    for(int j =0;j<num_p;j++) {
+                                        String opt=request.getParameter("P" + i + "_" + j);
+                                        sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setInt(1, que_id);
+                                        ps.setInt(2, 0);//0 for left(P) and 1 for right(Q)
+                                        ps.setString(3,p.get(j));
+                                        ps.executeUpdate();
+                                    }
+                                    for (int j = 0; j<num_q; j++) {
+                                        String opt=request.getParameter("P" + i + "_" + j);
+                                        sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setInt(1, que_id);
+                                        ps.setInt(2, 1);//0 for left(P) and 1 for right(Q)
+                                        ps.setString(3,q.get(j));
+                                        ps.executeUpdate();
+                                    }
+                                } 
+                                catch (NullPointerException ex) 
+                                {
+                                    out.println("Checkbox null point exception type=2");
+                                }
+                                
+                            }
+
+                        } else {
+                            out.println("Cannot insert into database!");
+                        }
+                    } catch (SQLException e) {
+                        out.println("Inserting failed because of ==>" + e.getMessage());
+                    }
+                } catch (NullPointerException e) {
+                    out.println("Addin que error =" + e.getMessage());
+                }
+            } else if (type == 5) {
+                String ans = "";
+                int num_p=0;
+                int num_q=0;
+                try {
+                    num_p = Integer.parseInt(request.getParameter("PtypeNum" + i));
+                    num_q = Integer.parseInt(request.getParameter("QtypeNum" + i));
+                    ans = request.getParameter("MatchAns" + i);
+                    
+                    for (int j = 1; j <= num_p; j++) {
+                        p.add(request.getParameter("P" + i + "_" + j));
+                        out.println("Adding =" + request.getParameter("P" + i + "_" + j));
+                    }
+                    for (int j = 1; j <= num_q; j++) {
+                        q.add(request.getParameter("Q" + i + "_" + j));
+                        out.println("Adding =" + request.getParameter("Q" + i + "_" + j));
+                    }
+                    StringTokenizer st=new StringTokenizer(ans,"|");
+                    String ans_send=null;
+                     while(st.hasMoreTokens())
+                    {
+                        String ans_curr=st.nextToken().toString();
+                        if(ans_curr.indexOf(":")>=0)
+                        {
+                        StringTokenizer st1=new StringTokenizer(ans_curr,":");
+                        
+                        while(st1.hasMoreTokens())
+                        {
+                            
+                            String tmp=st1.nextToken().toString();
+                            char ch=tmp.charAt(0);
+                            int index=ch-64;
+                            
+                            if(ans_send==null)
+                                ans_send=Integer.toString(index);
+                            else
+                                ans_send=ans_send+"|"+index;
+                            //int index=q.indexOf(tmp)+1;
+                            
+                            System.out.println("st1.nextToken()="+tmp);
+                        }
+                        }
+                        else
+                        {
+                            char ch=ans_curr.charAt(0);
+                            int index=ch-64;
+                            System.out.println("opt="+ans_curr);
+                            if(ans_send==null)
+                                ans_send=Integer.toString(index);
+                            else
+                                ans_send=ans_send+"|"+index;
+                            System.out.println("Does not contain :");
+                        }
+                        
+                    }
+                    //b:c|d|d:e
+                    obj1.addAns(i, ans_send);
+
+                } catch (NullPointerException e) {
+                    out.println(e.getMessage());
+                }
+                try {
+                    obj.addQue(type, i, "", marks, marksNeg, new ArrayList<>(p), new ArrayList<>(q));
+                    try {
+
+                        Class.forName("com.mysql.jdbc.Driver");
+                        Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+                        String sql = "select ExamId from Exam where Name=? and Time=? and Marks=?";
+                        PreparedStatement ps = con.prepareStatement(sql);
+
+                        ps.setString(1, test_name);
+                        ps.setString(2, testTime);
+                        ps.setInt(3, total);
+                        ResultSet rs = ps.executeQuery();
+
+                        //String que="select ExamId from Exam where Name='"+test_name+"' and Time='"+testTime+"' and Marks='"+total+"'";
+                        //ResultSet rs=s1.executeQuery(que);
+                        if (rs.next()) {
+                            int ExamId = Integer.parseInt(rs.getString(1));
+                            sql = "insert into Question(ExamId,Description,Marks,NegativeMarks,Answer,TypeId)values(?,?,?,?,?,?)";
+                            ps = con.prepareStatement(sql);
+
+                            ps.setInt(1, ExamId);
+                            ps.setString(2, "");//EXTRACT FROM TEXT FIELD
+                            ps.setInt(3, marks);
+                            ps.setInt(4, marksNeg);
+                            ps.setString(5, ans);
+                            ps.setInt(6, 5);
+                            ps.executeUpdate();
+                            
+                            
+                            
+                            //insert into Options into Options table
+                            
+                            sql = "select QuestionId from Question where Marks=? and NegativeMarks=? and Answer=? and Description=?";
+                            ps = con.prepareStatement(sql);
+                            ps.setInt(1,marks);
+                            ps.setInt(2,marksNeg);
+                            ps.setString(3,ans);
+                            ps.setString(4,"");
+                            
+                            rs = ps.executeQuery();
+                            if (rs.next()) {
+                                int que_id = rs.getInt(1);
+                                try 
+                                {
+                                    for (int j =0; j<num_p; j++) {
+                                        String opt=request.getParameter("P" + i + "_" + j);
+                                        sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setInt(1, que_id);
+                                        ps.setInt(2, 0);//0 for left(P) and 1 for right(Q)
+                                        ps.setString(3,p.get(j));
+                                        ps.executeUpdate();
+                                    }
+                                    for (int j = 0; j<num_q; j++) {
+                                        String opt=request.getParameter("P" + i + "_" + j);
+                                        sql = "insert into Options(QuestionId,Position,Opt)values(?,?,?)";
+                                        ps = con.prepareStatement(sql);
+                                        ps.setInt(1, que_id);
+                                        ps.setInt(2, 1);//0 for left(P) and 1 for right(Q)
+                                        ps.setString(3,q.get(j));
+                                        ps.executeUpdate();
+                                    }
+                                } 
+                                catch (NullPointerException ex) 
+                                {
+                                    out.println("Checkbox null point exception type=2");
+                                }
+                                
+                            }
+
+                        } else {
+                            out.println("Cannot insert into database!");
+                        }
+
+                    } catch (SQLException e) {
+                        out.println("Inserting failed because of ==>" + e.getMessage());
+                    }
+                } catch (NullPointerException e) {
+                    out.println("Addin que error =" + e.getMessage());
+                }
+            }
+            //out.println("Printing p<br>");
+            for (int k = 0; k < p.size(); k++) {
+                out.println(p.get(k) + "<br>");
+            }
+            p.clear();
+            q.clear();
+        }
+        out.println(test_name + "<br>");
+        out.println(total_que + "<br>");
+        out.println(total_duration + "<br>");
+        out.println(total + "<br>");
+        out.println(testTime + "<br>");
+
+        //CREATE JSON FILE HERE
+        Gson gson = new Gson();
+        String jsonString = gson.toJson(obj);
+        System.out.println("JSON string=" + jsonString);
+        out.println("<br>" + jsonString);
+        String paperName = null;
+        boolean flag=false;
+        try {
+            paperName = test_name + ".json";
+            File questionPaper = new File("exam/" + paperName);
+            if (!questionPaper.exists()) {
+                out.println("File does not exist! creating new file");
+                questionPaper.createNewFile();
+
+            }
+            out.println("FIle exists!!!");
+            FileWriter fw = new FileWriter(questionPaper);
+            fw.write(jsonString);
+            fw.close();
+        } catch (Exception e) {
+            flag=true;
+            out.println(e.getMessage());
+        }
+        jsonString = gson.toJson(obj1);
+        System.out.println("JSON string=" + jsonString);
+        out.println("<br>" + jsonString);
+        String AnsPaperName="";
+        try {
+            AnsPaperName = test_name + "_Ans" + ".json";
+            File questionPaper = new File("exam/" + AnsPaperName);
+            if (!questionPaper.exists()) {
+                out.println("File does not exist! creating new file");
+                questionPaper.createNewFile();
+
+            }
+            out.println("FIle exists!!!");
+            FileWriter fw = new FileWriter(questionPaper);
+            fw.write(jsonString);
+            fw.close();
+        } catch (Exception e) {
+            flag=true;
+            out.println(e.getMessage());
+        }
+        if(!flag)
+        {
+            Class.forName("com.mysql.jdbc.Driver");
+            Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+            //Statement s1=con.createStatement();
+            PreparedStatement ps = con.prepareStatement("delete from requests where requestId=?");
+            out.println(testTime);
+            ps.setInt(1,Integer.parseInt(session.getAttribute("requestId").toString()));
+            ps.executeUpdate();
+        }
+        response.sendRedirect("encrypt.jsp?paperName=" + paperName + "&exam_name=" + test_name+"&ansPaperName="+AnsPaperName);
+        //response.setStatus(response.SC_MOVED_TEMPORARILY);
+        //response.setHeader("Location", "encrypt.jsp?paperName=" + paperName + "&exam_name=" + test_name);
+
+    }
+    else
+    {
+        response.sendRedirect("/index.jsp");
+    }
+    %>
+
+</html>
+

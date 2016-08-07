@@ -1,0 +1,87 @@
+<%@page import="java.util.Set"%>
+<%@page import="java.util.HashSet"%>
+<%@page import="java.sql.ResultSet"%>
+<%@page import="java.io.PrintWriter"%>
+<%@page import="java.sql.DriverManager"%>
+<%@page import="java.sql.Statement"%>
+<%@page import="java.sql.Connection"%>
+<%@page import="java.util.Enumeration"%>
+<%@page import="java.util.Iterator"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+
+<!DOCTYPE html>
+<html>
+     <%
+        if ((session.getAttribute("name")) != null && (session.getAttribute("password") != null) && (session.getAttribute("role").equals("Teacher"))) {
+    %>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>JSP Page</title>
+    </head>
+    <body>
+        <%
+            
+            //String exam_name=request.getParameter("exam_name");
+            int exam_id=Integer.parseInt(request.getParameter("exam_id"));
+            HashSet<String> set=new HashSet<>();
+            try
+            {
+                Class.forName("com.mysql.jdbc.Driver");
+                Connection con = DriverManager.getConnection("jdbc:mysql://localhost/eproctor", "root", "shraonessk");
+            
+                String[] paramValues = request.getParameterValues("emailId");
+                for (int i = 0; i < paramValues.length; i++) 
+                {
+                        //out.println(paramValues[i]);
+                        Statement s1=con.createStatement();
+                        String query ="select UserId,Photo from Details where Status = \'1\' and Email=\'"+paramValues[i]+"\'";
+                        //out.println(query);
+                        ResultSet rs=s1.executeQuery(query);
+                        
+                        if(rs.next())
+                        {
+                            int id = Integer.parseInt(rs.getString(1));
+                            String photoLoc = rs.getString(2);
+                            query="select Time from Exam where ExamId='"+exam_id+"'";
+                            rs=s1.executeQuery(query);
+                            String time="";
+                            if(rs.next())
+                                time=rs.getString(1);
+                            query ="insert into Test(ExamId,StudentId,Photo,Time) values ('"+exam_id+"','"+id+"','"+photoLoc+"','"+time+"')";
+                            s1.executeUpdate(query);
+                            //out.println(query);
+                        }
+                        else
+                        {
+                           set.add(paramValues[i]);
+                        }
+                }
+                if(set.size() > 0)
+                {
+                    String acc=null;
+                    Iterator<String> it = set.iterator();
+                    for (; it.hasNext();) 
+                    {
+                        if(acc==null)
+                            acc=it.next();
+                        else
+                            acc=acc+"<br>"+it.next();
+                    }
+                    response.sendRedirect("addStudents.jsp?msg=Following accounts haven't registered OR Their accounts haven't been activated by the administrator<br>"+acc);
+                }
+                response.sendRedirect("addStudents.jsp");
+            }
+            catch(Exception e)
+            {
+                    out.println(e.getMessage());
+            }
+        %>
+    </body>
+    <%
+}
+else
+{
+    response.sendRedirect("/index.jsp");
+}
+    %>
+</html>

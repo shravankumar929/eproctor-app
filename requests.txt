@@ -1,0 +1,31 @@
+1)Register student
+	registerStudent?email=abc@gmail.com&password=abc&mac=12345
+
+2)Login Student
+	RequestLogin?email=abc@gmail.com&password=abc
+
+	return value is the student id
+
+3)Get list of exams
+	RegisteredExams?userId=3
+
+	you will get ExamId:ExamName:ExamTime
+
+4)downloadPaper?exam_id=21&mac=12345&exam_name=Maths1&
+
+5)downloadPaperKey?exam_id=21&mac=12345&exam_name=Maths1
+
+6)To send image 
+	servlet file name is verifyImage
+	and send directly the image to the above servlet
+
+7)To send result to server
+	examResult?exam_id=21&student_id=3&total_marks=10&score=5
+
+8)	
+cheatingLog?email=abc@gmail.com&exam_name=Maths1
+
+
+ExamRespose
+
+	server should get ExamId,StudentId,Response(Answer)
